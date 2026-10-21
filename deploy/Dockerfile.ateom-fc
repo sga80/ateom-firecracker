@@ -1,0 +1,74 @@
+# Builds ateom-fc inside a real Linux container (rust:$RUST_VERSION) instead
+# of cross-compiling from the host — macOS has no working GNU-compatible
+# linker for aarch64-unknown-linux-musl, but a genuine Linux build
+# environment needs no cross-linker at all for this. Same pattern already
+# used in ~/code/rust/projects/ironlog's own Dockerfile.
+#
+# Final stage stays distroless/static: no shell, no libc, nothing but what's
+# COPY'd in — same default substrate itself uses for every cmd/ binary
+# (.ko.yaml's defaultBaseImage). That's also why this stage has no RUN step:
+# static-debian13 has no /bin/sh to run one against.
+
+ARG RUST_VERSION=1.90
+FROM --platform=$BUILDPLATFORM docker.io/library/rust:${RUST_VERSION} AS build
+WORKDIR /app
+
+# e2fsprogs gives us mkfs.ext4 — macOS has no such tool at all (confirmed:
+# `mkfs.ext4` doesn't exist on the host), so the M1-level rootfs image is
+# built here too, same reasoning as building ateom-fc itself in this stage.
+# busybox-static gives the rootfs a real, runnable test command for
+# guest-init's Exec RPC (confirmed statically linked via `file` — no libc
+# needed, same as the musl Rust binaries) — placeholder until Exec runs the
+# actual Docker image's entrypoint instead (M3).
+RUN apt-get update && apt-get install -y musl-tools e2fsprogs busybox-static
+RUN rustup target add aarch64-unknown-linux-musl
+
+RUN --mount=type=bind,source=.,target=/app,rw \
+    --mount=type=cache,target=/app/target/ \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/ \
+    cargo build --locked --release --target aarch64-unknown-linux-musl -p ateom-fc -p guest-init && \
+    cp target/aarch64-unknown-linux-musl/release/ateom-fc /bin/ateom-fc && \
+    cp target/aarch64-unknown-linux-musl/release/guest-init /bin/guest-init
+
+# M1-level rootfs: just enough for guest-init to run as /init and mount its
+# own /proc, /sys, /dev (guest-init::virtual_fs does the actual mounting at
+# boot — these just need to exist as empty mount points first). Not the
+# real per-actor OCI-image rootfs (that's internal/rootfs, M3, still
+# unbuilt) — this is the throwaway M1 "does it boot at all" rootfs.
+RUN mkdir -p /rootfs-staging/proc /rootfs-staging/sys /rootfs-staging/dev /rootfs-staging/bin && \
+    cp /bin/guest-init /rootfs-staging/init && \
+    chmod +x /rootfs-staging/init && \
+    cp /bin/busybox /rootfs-staging/bin/busybox && \
+    ln -s busybox /rootfs-staging/bin/echo && \
+    mkfs.ext4 -d /rootfs-staging -F /bin/rootfs.ext4 64M
+
+FROM gcr.io/distroless/static-debian13:latest
+
+# So `Command::new("firecracker")` resolves via PATH lookup rather than
+# needing an absolute path baked into the Rust code.
+ENV PATH="/usr/local/bin:/usr/bin:/bin"
+
+COPY --from=build /bin/ateom-fc /ateom-fc
+# Expects assets/firecracker to already exist (executable) at build time —
+# fetched by `make fetch-assets`, not here.
+COPY assets/firecracker /usr/local/bin/firecracker
+
+# Kernel and rootfs live under /var/lib/ateomfc — same FHS convention real
+# Substrate already uses for this kind of thing (internal/imagecache's
+# /var/lib/ate/image-cache), and the same "ateomfc" prefix this project
+# already uses for the vsock UDS path under /run.
+COPY assets/vmlinux /var/lib/ateomfc/vmlinux
+# M1-level placeholder only — see the build stage comment above. The real
+# per-actor OCI-image rootfs (internal/rootfs, M3) replaces this later.
+COPY --from=build /bin/rootfs.ext4 /var/lib/ateomfc/rootfs.ext4
+
+# M3 test input (Substrate's real demos/counter, cross-compiled statically
+# — see docs/dev/m3-plan.md). Already flattened into a plain folder ahead
+# of time (docker create + export, done once, outside ateom-fc entirely) —
+# deliberately NOT a docker image/tarball, so ateom-fc never needs docker
+# access itself. This is exactly the shape Substrate's real
+# internal/imagecache.SetupBundleRootfs hands over later: just a folder.
+COPY assets/counter-rootfs /var/lib/ateomfc/test-images/counter-rootfs
+
+ENTRYPOINT ["/ateom-fc"]

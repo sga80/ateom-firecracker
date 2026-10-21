@@ -1,0 +1,12 @@
+[package]
+name = "ateomfcpb"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+protobuf = "3.7"
+ttrpc = { version = "0.10.0", features = ["async"] }
+async-trait = "0.1.92"
+
+[build-dependencies]
+ttrpc-codegen = "0.7.0"

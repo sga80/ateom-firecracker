@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package ateompb;
+
+message PingRequest{
+  string message = 1;
+}
+message PingResponse{
+  string message = 1;
+}
+message ExecRequest{
+}
+message ExecResponse{
+  int32 exit_code = 1;
+}
+
+service GuestAgent {
+  rpc Ping(PingRequest) returns (PingResponse);
+  rpc Exec(ExecRequest) returns (ExecResponse);
+}

@@ -1,0 +1,24 @@
+# M1 test pod for ateom-fc, applied against the ateom-fc kind cluster
+# running inside fcvm (kubectl apply -f k8s-resources/pod.yaml).
+#
+# privileged: true is a deliberate POC shortcut for /dev/kvm access — real
+# Substrate uses a device plugin + extended resource request instead (see
+# docs/dev/ateom-firecracker-milestones.md for why that's deferred here).
+#
+# imagePullPolicy: Never — the image is already loaded into this kind
+# cluster's own containerd via `kind load docker-image` (make save-to-lima +
+# docker load + kind load gets it there); this guarantees kubelet never
+# tries to reach any registry for "localhost/ateom-fc", which it would
+# otherwise read as a real registry host.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ateom-fc
+spec:
+  restartPolicy: Never
+  containers:
+    - name: ateom-fc
+      image: localhost/ateom-fc:dev
+      imagePullPolicy: Never
+      securityContext:
+        privileged: true

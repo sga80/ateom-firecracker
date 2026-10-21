@@ -1,0 +1,3 @@
+[workspace]
+members = ["ateom-fc", "guest-init", "ateomfcpb"]
+resolver = "2"

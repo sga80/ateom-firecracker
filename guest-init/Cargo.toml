@@ -1,0 +1,12 @@
+[package]
+name = "guest-init"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.104"
+nix = { version = "0.31.3", features = ["mount"] }
+ateomfcpb = { path = "../ateomfcpb" }
+protobuf = "3.7"
+ttrpc = "0.10.0"
+
