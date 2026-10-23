@@ -17,7 +17,7 @@ pub struct VSockPayload {
 
 impl Booter {
     pub(crate) async fn vsock(&mut self) -> anyhow::Result<()> {
-        let uds_path = create_uds_path().await?;
+        let uds_path = create_uds_path(self.actor_uuid).await?;
         let payload = VSockPayload {
             guest_cid: GUEST_CID,
             uds_path: uds_path.clone(),
@@ -29,8 +29,7 @@ impl Booter {
     }
 }
 
-async fn create_uds_path() -> anyhow::Result<(String)> {
-    let actor_uuid = Uuid::new_v4();
+async fn create_uds_path(actor_uuid: Uuid) -> anyhow::Result<(String)> {
     let uds_path = format!("/run/ateomfc/{actor_uuid}/vsock.sock");
 
     let path = Path::new(&uds_path);

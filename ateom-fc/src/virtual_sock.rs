@@ -65,12 +65,15 @@ async fn run_conversation(agent: &GuestAgentClient) -> Result<()> {
     }
 
     // now send the command to execute
-    let exec_request = ExecRequest::new();
+    let mut exec_request = ExecRequest::new();
+    exec_request.command = String::from("/counter"); // hard coded to the counter example for now.
     let exec_response = agent.exec(Context::default(), &exec_request).await?;
-    println!("exit code from exec command is {}", exec_response.exit_code);
-    if exec_response.exit_code != 0 {
-        bail!("invalid response from guest: {:?}", exec_response.exit_code);
+    if exec_response.success {
+        println!("command executed successfully")
+    } else {
+        println!("command failed to execute")
     }
+
 
     Ok(())
 }

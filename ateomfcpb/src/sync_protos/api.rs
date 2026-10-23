@@ -271,6 +271,9 @@ impl ::protobuf::reflect::ProtobufValue for PingResponse {
 // @@protoc_insertion_point(message:ateompb.ExecRequest)
 #[derive(PartialEq,Clone,Default,Debug)]
 pub struct ExecRequest {
+    // message fields
+    // @@protoc_insertion_point(field:ateompb.ExecRequest.command)
+    pub command: ::std::string::String,
     // special fields
     // @@protoc_insertion_point(special_field:ateompb.ExecRequest.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -288,8 +291,13 @@ impl ExecRequest {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(0);
+        let mut fields = ::std::vec::Vec::with_capacity(1);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "command",
+            |m: &ExecRequest| { &m.command },
+            |m: &mut ExecRequest| { &mut m.command },
+        ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<ExecRequest>(
             "ExecRequest",
             fields,
@@ -308,6 +316,9 @@ impl ::protobuf::Message for ExecRequest {
     fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
         while let Some(tag) = is.read_raw_tag_or_eof()? {
             match tag {
+                10 => {
+                    self.command = is.read_string()?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -320,12 +331,18 @@ impl ::protobuf::Message for ExecRequest {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u64 {
         let mut my_size = 0;
+        if !self.command.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.command);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+        if !self.command.is_empty() {
+            os.write_string(1, &self.command)?;
+        }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -343,11 +360,13 @@ impl ::protobuf::Message for ExecRequest {
     }
 
     fn clear(&mut self) {
+        self.command.clear();
         self.special_fields.clear();
     }
 
     fn default_instance() -> &'static ExecRequest {
         static instance: ExecRequest = ExecRequest {
+            command: ::std::string::String::new(),
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -375,8 +394,8 @@ impl ::protobuf::reflect::ProtobufValue for ExecRequest {
 #[derive(PartialEq,Clone,Default,Debug)]
 pub struct ExecResponse {
     // message fields
-    // @@protoc_insertion_point(field:ateompb.ExecResponse.exit_code)
-    pub exit_code: i32,
+    // @@protoc_insertion_point(field:ateompb.ExecResponse.success)
+    pub success: bool,
     // special fields
     // @@protoc_insertion_point(special_field:ateompb.ExecResponse.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -397,9 +416,9 @@ impl ExecResponse {
         let mut fields = ::std::vec::Vec::with_capacity(1);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
-            "exit_code",
-            |m: &ExecResponse| { &m.exit_code },
-            |m: &mut ExecResponse| { &mut m.exit_code },
+            "success",
+            |m: &ExecResponse| { &m.success },
+            |m: &mut ExecResponse| { &mut m.success },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<ExecResponse>(
             "ExecResponse",
@@ -420,7 +439,7 @@ impl ::protobuf::Message for ExecResponse {
         while let Some(tag) = is.read_raw_tag_or_eof()? {
             match tag {
                 8 => {
-                    self.exit_code = is.read_int32()?;
+                    self.success = is.read_bool()?;
                 },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -434,8 +453,8 @@ impl ::protobuf::Message for ExecResponse {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u64 {
         let mut my_size = 0;
-        if self.exit_code != 0 {
-            my_size += ::protobuf::rt::int32_size(1, self.exit_code);
+        if self.success != false {
+            my_size += 1 + 1;
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
@@ -443,8 +462,8 @@ impl ::protobuf::Message for ExecResponse {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-        if self.exit_code != 0 {
-            os.write_int32(1, self.exit_code)?;
+        if self.success != false {
+            os.write_bool(1, self.success)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -463,13 +482,13 @@ impl ::protobuf::Message for ExecResponse {
     }
 
     fn clear(&mut self) {
-        self.exit_code = 0;
+        self.success = false;
         self.special_fields.clear();
     }
 
     fn default_instance() -> &'static ExecResponse {
         static instance: ExecResponse = ExecResponse {
-            exit_code: 0,
+            success: false,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -496,11 +515,11 @@ impl ::protobuf::reflect::ProtobufValue for ExecResponse {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\tapi.proto\x12\x07ateompb\"'\n\x0bPingRequest\x12\x18\n\x07message\
     \x18\x01\x20\x01(\tR\x07message\"(\n\x0cPingResponse\x12\x18\n\x07messag\
-    e\x18\x01\x20\x01(\tR\x07message\"\r\n\x0bExecRequest\"+\n\x0cExecRespon\
-    se\x12\x1b\n\texit_code\x18\x01\x20\x01(\x05R\x08exitCode2v\n\nGuestAgen\
-    t\x123\n\x04Ping\x12\x14.ateompb.PingRequest\x1a\x15.ateompb.PingRespons\
-    e\x123\n\x04Exec\x12\x14.ateompb.ExecRequest\x1a\x15.ateompb.ExecRespons\
-    eb\x06proto3\
+    e\x18\x01\x20\x01(\tR\x07message\"'\n\x0bExecRequest\x12\x18\n\x07comman\
+    d\x18\x01\x20\x01(\tR\x07command\"(\n\x0cExecResponse\x12\x18\n\x07succe\
+    ss\x18\x01\x20\x01(\x08R\x07success2v\n\nGuestAgent\x123\n\x04Ping\x12\
+    \x14.ateompb.PingRequest\x1a\x15.ateompb.PingResponse\x123\n\x04Exec\x12\
+    \x14.ateompb.ExecRequest\x1a\x15.ateompb.ExecResponseb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

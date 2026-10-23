@@ -1,21 +1,37 @@
+use std::time::Instant;
+use uuid::Uuid;
+
 mod fcstarter;
 mod booter;
 mod virtual_sock;
 mod ttrpc;
+mod docker_ext4;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // first setup the docker ext4
+    let actor_uuid = Uuid::new_v4();
+    let docker_image_ext4_path = docker_ext4::docker_lower_ext4_block_device("/var/lib/ateomfc/test-images/counter-rootfs")?;
+    let docker_image_rw_upper_path = docker_ext4::docker_upper_ext4_block_device(actor_uuid)?;
     let client = get_reqwest_http_client()?;
+
+    let fc_start_time = Instant::now();
     fcstarter::start(client.clone()).await?;
+    println!("firecracker started, took {:?}", fc_start_time.elapsed());
 
     let kernel_path = "/var/lib/ateomfc/vmlinux";
     let root_fs_path = "/var/lib/ateomfc/rootfs.ext4";
-    let mut booter = booter::Booter::new(client.clone(), String::from(kernel_path), String::from(root_fs_path));
+    let mut booter = booter::Booter::new(client.clone(), String::from(kernel_path), String::from(root_fs_path), docker_image_ext4_path, docker_image_rw_upper_path, actor_uuid);
+
+    let boot_time = Instant::now();
     booter.boot().await?;
-    println!("booter started, starting virtual sock now ");
+    println!("booter started, boot took {:?}, starting virtual sock now ", boot_time.elapsed());
     // now connect to the af_sock async
     virtual_sock::start_connect(booter.get_uds_path()).await?;
 
+    loop {
+        std::future::pending::<()>().await
+    }
     Ok(())
 }
 

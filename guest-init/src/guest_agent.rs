@@ -1,3 +1,4 @@
+use crate::virtual_fs::MERGED_FINAL_DIR;
 use anyhow::bail;
 use ateomfcpb::sync_protos::api::{ExecRequest, ExecResponse, PingRequest, PingResponse};
 use ateomfcpb::sync_protos::api_ttrpc::{create_guest_agent, GuestAgent};
@@ -15,9 +16,9 @@ impl GuestAgent for GuestAgentServer {
         Ok(resp)
     }
     fn exec(&self, _ctx: &TtrpcContext, req: ExecRequest) -> ttrpc::Result<ExecResponse> {
-        println!("received command to execute");
-        let child = Command::new("/bin/echo")
-            .arg("hello world")
+        let exec_command = format!("{}{}", MERGED_FINAL_DIR, req.command);
+        println!("executing command {}", exec_command);
+        let child = Command::new(exec_command)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::inherit())
             .stderr(std::process::Stdio::inherit())
@@ -25,13 +26,13 @@ impl GuestAgent for GuestAgentServer {
 
         let mut resp = ExecResponse::new();
         if child.is_err() {
-            println!("failed to launch echo");
-            resp.exit_code = -1;
+            println!("failed to launch command");
+            resp.success = false;
         } else {
             let mut child = child.unwrap();
             println!("[PID 1] Launched echo with PID: {}", child.id());
-            let result = child.wait().unwrap(); // the wait call reaps the process so there is no additional work required here 
-            resp.exit_code = result.code().unwrap();
+            // we are not going to wait here as the process needs to run. We will eventually write a reaper that reaps the child
+            resp.success = true;
         }
 
         Ok(resp)

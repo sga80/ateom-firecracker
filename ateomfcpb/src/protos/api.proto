@@ -9,9 +9,10 @@ message PingResponse{
   string message = 1;
 }
 message ExecRequest{
+  string command = 1 ;
 }
 message ExecResponse{
-  int32 exit_code = 1;
+  bool success = 1;
 }
 
 service GuestAgent {

@@ -13,3 +13,5 @@ uuid = { version = "1.28.0", features = ["v4"] }
 vsock = "0.5.4"
 ttrpc = { version = "0.10.0", features = ["async", "async-trait", "async-stream"] }
 ateomfcpb = { path = "../ateomfcpb" }
+arcbox-ext4 = "0.1.2"
+tar = "0.4"
