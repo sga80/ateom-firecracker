@@ -6,6 +6,7 @@ mod booter;
 mod virtual_sock;
 mod ttrpc;
 mod docker_ext4;
+mod tap;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -15,9 +16,15 @@ async fn main() -> anyhow::Result<()> {
     let docker_image_rw_upper_path = docker_ext4::docker_upper_ext4_block_device(actor_uuid)?;
     let client = get_reqwest_http_client()?;
 
+    // hardcoding the IP address for now. When we implement IPAM we will be unique IP address for each VM 
+    tap::setup_actor_tap(actor_uuid.clone(), "169.254.17.1".to_string()).await?;
+
     let fc_start_time = Instant::now();
-    fcstarter::start(client.clone()).await?;
+
+    fcstarter::start(client.clone(), actor_uuid).await?;
+
     println!("firecracker started, took {:?}", fc_start_time.elapsed());
+
 
     let kernel_path = "/var/lib/ateomfc/vmlinux";
     let root_fs_path = "/var/lib/ateomfc/rootfs.ext4";

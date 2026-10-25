@@ -3,6 +3,7 @@ mod boot_source;
 mod drives;
 mod machine_config;
 pub(crate) mod vsock;
+mod network_interfaces;
 
 use anyhow::{bail, Result};
 use reqwest::{Client, Response, StatusCode};
@@ -47,7 +48,9 @@ impl Booter {
         self.vsock().await?;
         //6) Put machine config (resources)
         self.set_machine_configuration().await?;
-        //7) Put actions (InstanceStart to start the boot
+        //7) add network interfaces
+        self.create_network_interface().await?;
+        //8) Put actions (InstanceStart to start the boot
         self.start_instance().await?;
         println!("all calls succeeded");
         Ok(())

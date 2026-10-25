@@ -9,4 +9,5 @@ nix = { version = "0.31.3", features = ["mount"] }
 ateomfcpb = { path = "../ateomfcpb" }
 protobuf = "3.7"
 ttrpc = "0.10.0"
+libc = "0.2.191"
 

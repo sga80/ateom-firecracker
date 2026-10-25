@@ -1,5 +1,6 @@
 mod virtual_fs;
 mod guest_agent;
+mod network;
 
 use std::time::Instant;
 
@@ -7,22 +8,17 @@ use std::time::Instant;
 fn main() -> anyhow::Result<()> {
     let start = Instant::now();
     println!("starting guest init process ");
-    // 1) mount the /prod /sys and /dev drives
+    // 1) setup eth0 network interface
+    network::setup_eth0()?;
+    // 2) mount the /prod /sys and /dev drives
     let _ = virtual_fs::mount_virtual_filesystems()?;
     println!("filesystems mounted , starting ttrpc server");
-    // 2) open the connection back to the host by opening the vsock
+    // 3) open the connection back to the host by opening the vsock
     let mut server = guest_agent::get_ttrpc_server()?;
     server.start()?;
-    // with the setup done, print out the mounted directories' entries
-    for dir in ["/mnt/image", "/mnt/upper-device", "/mnt/upper-device/merged"] {
-        println!("entries in {dir}:");
-        for entry in std::fs::read_dir(dir)? {
-            println!("{:?}", entry?.path());
-        }
-    }
-    println!("guest init boot completed in {:?}", start.elapsed());
 
-    // 3) Get the command to run
+    println!("guest init boot completed in {:?}", start.elapsed());
+    
 
     // start() spawns its worker threads and returns immediately — `server`
     // must stay alive (dropping it tears the listener down), and PID 1 must
