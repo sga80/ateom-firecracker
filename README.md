@@ -6,9 +6,58 @@ built as a personal proof-of-concept alongside the project's existing
 `ateom-gvisor` and `ateom-microvm` backends. Not yet integrated with
 Substrate — exercised standalone for now.
 
+## Architecture
+
+Three things sit nested inside one worker pod: the long-running
+`ateom-firecracker` daemon, the guest-init binary it talks to, and the
+actor's own container process.
+
 ![Architecture diagram: a Kubernetes node containing a worker pod, which contains the ateom-firecracker process, which forks and execs firecracker over its REST API; firecracker hosts a hardware-trapped guest boundary, inside which a guest kernel runs ateom-firecracker-init as PID 1, which execs the actor's container process. A vsock control channel runs from ateom-firecracker, through firecracker, across the guest boundary, to ateom-firecracker-init.](docs/dev/architecture.svg)
 
-Full interactive version (with a host-to-guest breakdown per milestone): https://claude.ai/artifact/UJwzfLUvxm5pyoAgwtXTXR
+Solid grey arrows are plain process mechanics (fork/exec, the REST API). The
+dashed teal line is the vsock control channel — it leaves `ateom-firecracker`,
+runs through the `firecracker` process, crosses the hardware-trapped guest
+boundary, and lands on `ateom-firecracker-init`, which only then execs the
+actor's own process.
+
+### What ateom-firecracker actually does
+
+**Process lifecycle**
+- Is the worker pod's own entrypoint — the first thing the pod runs.
+- Forks + execs `firecracker` per active actor, and stays its parent for its whole life.
+- Reaps an orphaned Firecracker child if it's ever reparented — the same duty a real PID 1 has, one level down.
+- On `SIGTERM`: stops accepting new workloads, lets in-flight RPCs finish, then drains.
+
+**Driving the VMM**
+- Configures boot-source, drives, vsock and machine-config over Firecracker's REST API.
+- Drives pause → snapshot → shutdown for checkpoint (M6, not yet built).
+- Relaunches a fresh process and restores it from a snapshot to resume (M6, not yet built).
+
+**Talking to the guest**
+- Runs the host side of the vsock channel to `ateom-firecracker-init`: run, exec, stats, shutdown.
+- Forwards the actor's stdout/stderr back to the pod's own stdout, labeled.
+
+**Control-plane integration**
+- Reports this worker's capacity (sandbox class, slot count) on startup (M5, not yet built).
+- Serves `RunWorkload` / `CheckpointWorkload` / `RestoreWorkload` over gRPC (M5, not yet built).
+- M4 (tap networking) shipped; M5 (`ateompb.AteomServer` integration) is next — see "Status" below.
+
+### What's actually running, host to guest
+
+Neither channel crosses straight from host to guest — both pass through
+`firecracker`, which is the only process with a door into the guest. vsock
+has two distinct hops: a one-time boot-time call that tells firecracker to
+create the vsock device (ends inside firecracker — the guest never sees this
+call), and a separate runtime connection that actually carries ping/exec
+through to guest-init. Networking works the same way: `ateom-fc` hands
+firecracker a tap device's name over `PUT /network-interfaces`, firecracker
+opens the tap and presents it as `eth0`, and `guest-init` then configures
+that `eth0` itself (address, link-up, default route) via raw ioctls. The
+hardware trap itself sits only between firecracker and the guest kernel it
+runs, not between `ateom-fc` and firecracker, which talk over an ordinary
+REST/socket call.
+
+![Diagram showing ateom-fc on the host preparing images, booting the microVM, talking to the guest over vsock, and setting up tap networking, all passing through a firecracker VMM process in the middle, with the hardware-trapped boundary sitting only between firecracker and the guest kernel it runs.](docs/dev/architecture-host-guest.svg)
 
 ## Layout
 
