@@ -1,10 +1,22 @@
 # ateom-firecracker
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 A from-scratch Rust reimplementation of a Firecracker-microVM sandbox
 backend for [Agent Substrate](https://github.com/agent-substrate/substrate),
 built as a personal proof-of-concept alongside the project's existing
 `ateom-gvisor` and `ateom-microvm` backends. Not yet integrated with
 Substrate — exercised standalone for now.
+
+> **⚠️ Research project / proof-of-concept — not for production use.**
+> This is a personal POC, built to explore whether a from-scratch Firecracker
+> backend is viable for Agent Substrate. It has not been security-reviewed,
+> is missing basic production concerns (see "Out of scope" in
+> [`docs/dev/ateom-firecracker-milestones.md`](docs/dev/ateom-firecracker-milestones.md):
+> jailer/seccomp hardening, CSI/volumes, observability, error-path robustness,
+> etc.), and several pieces of networking setup used only for local
+> development (see `scripts/`) are explicitly disposable, not hardened. Use
+> at your own risk; do not run untrusted workloads through this code.
 
 ## Architecture
 
@@ -97,3 +109,7 @@ inside the guest. See `docs/dev/` for milestone-specific setup notes.
 project drives: [`boot-source`](docs/boot-source.md), [`drives`](docs/drives.md),
 [`machine-config`](docs/machine-config.md), [`vsock`](docs/vsock.md),
 [`actions`](docs/actions.md), and guest-side [`mount-virtual-fs`](docs/mount-virtual-fs.md).
+
+## License
+
+Apache License 2.0 — see [`LICENSE`](LICENSE).
