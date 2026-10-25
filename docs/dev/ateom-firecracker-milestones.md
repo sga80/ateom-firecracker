@@ -103,14 +103,15 @@ backends.
 **Done when:** a workload inside the microVM can serve one HTTP request from
 the host.
 
-### M5 — Formalize the vsock protocol
+### M5 — Real `ateompb.AteomServer`
 
-Replace the M1/M2 ad hoc messages with a real protobuf-defined protocol in
-`internal/guestagent` (generated the normal way, both ends in Go): run, exec,
-stats, shutdown.
+Turn the harness into `cmd/ateom-firecracker` proper: implement
+`RunWorkload`/`CheckpointWorkload`/`RestoreWorkload`/shutdown-draining, reusing
+the shared `internal/` packages (`actorlock`, `actorlog`, `ateomtunnel`,
+`ateomcgroup`, `nodepath`, `serverboot`) the way `ateom-microvm` does.
 
-**Done when:** the host harness and guest-init both talk through generated
-client/server code, not hand-rolled framing.
+**Done when:** the gRPC service responds correctly to a test client
+(`grpcurl` or similar), standalone — still no Kubernetes involved.
 
 ### M6 — Suspend/resume
 
@@ -129,17 +130,7 @@ continues execution transparently. Neither `guest-init` nor the workload
 has any awareness this happens — no special-casing needed in the guest for
 suspend/resume at all; it's entirely a host/VMM-level concern.
 
-### M7 — Real `ateompb.AteomServer`
-
-Turn the harness into `cmd/ateom-firecracker` proper: implement
-`RunWorkload`/`CheckpointWorkload`/`RestoreWorkload`/shutdown-draining, reusing
-the shared `internal/` packages (`actorlock`, `actorlog`, `ateomtunnel`,
-`ateomcgroup`, `nodepath`, `serverboot`) the way `ateom-microvm` does.
-
-**Done when:** the gRPC service responds correctly to a test client
-(`grpcurl` or similar), standalone — still no Kubernetes involved.
-
-### M8 — Wire into the control plane
+### M7 — Wire into the control plane
 
 Add `SandboxClassFirecracker` to `pkg/api/v1alpha1`, a VAP rule,
 `atecontroller`'s pod-shape branch, `atelet` asset handling, and a
@@ -148,7 +139,7 @@ Add `SandboxClassFirecracker` to `pkg/api/v1alpha1`, a VAP rule,
 **Done when:** a real `WorkerPool` in a real cluster schedules an actor onto
 an `ateom-firecracker` worker through the normal control plane.
 
-### M9 — E2E POC demo
+### M8 — E2E POC demo
 
 Reproduce the project's own [Counter Demo](../../demos/counter/README.md)
 (stateful actor, suspend/resume across many cycles) on the Firecracker

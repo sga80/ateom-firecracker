@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 800" role="img" aria-label="Nested diagram showing a Kubernetes node containing a worker pod, which contains the ateom-firecracker process, which forks and execs a firecracker process over a REST API; firecracker hosts a hardware-trapped guest boundary, inside which a guest kernel runs ateom-firecracker-init as PID 1, which execs the actor's container process. A vsock control channel runs from ateom-firecracker, through firecracker, across the guest boundary, to ateom-firecracker-init.">
+  <style>
+    :root {
+      --surface:#ffffff;
+      --surface-muted:#e3e9ea;
+      --ink:#10181a;
+      --muted:#51636a;
+      --border:#c7d0d2;
+      --accent:#0f7a73;
+      --accent-2:#c1440e;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --surface:#121b1e;
+        --surface-muted:#19262a;
+        --ink:#e8eef0;
+        --muted:#93a7ad;
+        --border:#2a3a3f;
+        --accent:#39c7ba;
+        --accent-2:#e2793a;
+        color-scheme: dark;
+      }
+    }
+    text { font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+    .box-title { font-weight: 600; }
+    .box-sub { font-family: -apple-system, BlinkMacSystemFont, sans-serif; fill: var(--muted); }
+    .eyebrow-svg { letter-spacing: .07em; text-transform: uppercase; fill: var(--muted); }
+    .arrow-label { font-family: -apple-system, BlinkMacSystemFont, sans-serif; fill: var(--muted); }
+    .boundary-label { letter-spacing: .06em; text-transform: uppercase; fill: var(--ink); opacity: .75; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <rect x="16" y="16" width="788" height="760" rx="14" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+  <text x="36" y="44" class="eyebrow-svg" font-size="11">Kubernetes node</text>
+  <text x="36" y="61" class="box-sub" font-size="11.5">one physical or virtual host — many pods scheduled on it</text>
+
+  <rect x="40" y="84" width="740" height="670" rx="12" fill="none" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 4"/>
+  <text x="60" y="112" class="eyebrow-svg" font-size="11">Worker pod</text>
+  <text x="60" y="129" class="box-sub" font-size="11.5">one of possibly many pods on this node</text>
+
+  <rect x="70" y="150" width="360" height="92" rx="8" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="90" y="178" class="box-title" font-size="15" fill="var(--accent)">ateom-firecracker</text>
+  <text x="90" y="196" class="box-sub" font-size="11.5">pod entrypoint · parent process</text>
+  <text x="90" y="212" class="box-sub" font-size="11.5">serves the AteomServer gRPC API</text>
+
+  <line x1="200" y1="244" x2="200" y2="268" stroke="var(--muted)" stroke-width="1.75" marker-end="url(#arrow)" style="color:var(--muted)"/>
+  <text x="213" y="260" class="arrow-label" font-size="11">fork + exec</text>
+
+  <line x1="380" y1="268" x2="380" y2="244" stroke="var(--muted)" stroke-width="1.75" marker-end="url(#arrow)" style="color:var(--muted)"/>
+  <text x="393" y="260" class="arrow-label" font-size="11">REST API (pause / snapshot / shutdown)</text>
+
+  <text x="450" y="188" class="arrow-label" font-size="11" fill="var(--accent)">vsock — control channel ↓</text>
+
+  <rect x="70" y="270" width="680" height="460" rx="10" fill="var(--surface-muted)" stroke="var(--border)" stroke-width="1.5"/>
+  <text x="90" y="298" class="box-title" font-size="14.5">firecracker</text>
+  <text x="90" y="316" class="box-sub" font-size="11.5">host process, child of ateom-firecracker · opens /dev/kvm</text>
+
+  <text x="410" y="340" class="boundary-label" font-size="10.5" text-anchor="middle">guest boundary — hardware-trapped (VT-x / EL2 + EPT)</text>
+  <line x1="92" y1="354" x2="728" y2="354" stroke="var(--ink)" stroke-width="2" stroke-dasharray="7 6" opacity=".55"/>
+
+  <rect x="110" y="370" width="600" height="330" rx="9" fill="var(--surface-muted)" stroke="var(--border)" stroke-width="1.5"/>
+  <text x="130" y="398" class="box-title" font-size="14">guest kernel</text>
+  <text x="130" y="416" class="box-sub" font-size="11.5">vmlinux · boots fresh inside this one microVM</text>
+
+  <rect x="150" y="440" width="520" height="230" rx="8" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="2"/>
+  <text x="170" y="468" class="box-title" font-size="14.5" fill="var(--accent-2)">ateom-firecracker-init</text>
+  <text x="170" y="486" class="box-sub" font-size="11.5">PID 1 in the guest · vsock server</text>
+
+  <text x="190" y="505" class="arrow-label" font-size="11">exec → image entrypoint</text>
+  <line x1="170" y1="496" x2="170" y2="508" stroke="var(--accent-2)" stroke-width="1.75" marker-end="url(#arrow)" style="color:var(--accent-2)"/>
+
+  <rect x="190" y="510" width="440" height="130" rx="7" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="2"/>
+  <text x="210" y="538" class="box-title" font-size="14.5" fill="var(--accent-2)">agent / actor process</text>
+  <text x="210" y="556" class="box-sub" font-size="11.5">the real workload — from the actor's OCI image</text>
+  <text x="210" y="572" class="box-sub" font-size="11">entrypoint read from config.json → Cmd / Entrypoint</text>
+
+  <path d="M 430 196 L 745 196 L 745 436 L 600 436 L 600 440"
+        fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="2 5"
+        marker-end="url(#arrow)" style="color:var(--accent)"/>
+</svg>

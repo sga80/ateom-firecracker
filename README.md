@@ -6,7 +6,9 @@ built as a personal proof-of-concept alongside the project's existing
 `ateom-gvisor` and `ateom-microvm` backends. Not yet integrated with
 Substrate — exercised standalone for now.
 
-**Architecture diagram:** https://claude.ai/artifact/UJwzfLUvxm5pyoAgwtXTXR
+![Architecture diagram: a Kubernetes node containing a worker pod, which contains the ateom-firecracker process, which forks and execs firecracker over its REST API; firecracker hosts a hardware-trapped guest boundary, inside which a guest kernel runs ateom-firecracker-init as PID 1, which execs the actor's container process. A vsock control channel runs from ateom-firecracker, through firecracker, across the guest boundary, to ateom-firecracker-init.](docs/dev/architecture.svg)
+
+Full interactive version (with a host-to-guest breakdown per milestone): https://claude.ai/artifact/UJwzfLUvxm5pyoAgwtXTXR
 
 ## Layout
 
