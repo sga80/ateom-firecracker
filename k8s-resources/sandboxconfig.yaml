@@ -1,0 +1,24 @@
+# Cluster-wide SandboxConfig for the firecracker sandbox class, applied
+# against the real Substrate control plane (kubectl apply -f
+# k8s-resources/sandboxconfig.yaml). Needs SandboxClassFirecracker to exist
+# in pkg/api/v1alpha1 and the CRD regenerated with it in the enum (see
+# docs/dev/ateom-firecracker-milestones.md).
+#
+# No assets block: unlike gvisor/microvm, ateom-fc does not have atelet fetch
+# its kernel/rootfs at runtime -- they're baked into the ateom-fc container
+# image itself (see main.rs's hardcoded /var/lib/ateomfc/vmlinux and
+# rootfs.ext4 paths). Assets is +optional on the CRD schema and the
+# ValidatingAdmissionPolicy only enforces asset requirements for
+# gvisor/microvm, so an empty version here is valid.
+apiVersion: ate.dev/v1alpha1
+kind: SandboxConfig
+metadata:
+  name: firecracker
+  annotations:
+    sandboxconfig.ate.dev/is-class-default: "true"
+spec:
+  sandboxClass: firecracker
+  defaultVersion: v1
+  versions:
+  - name: v1
+    state: Enabled

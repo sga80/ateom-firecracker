@@ -22,3 +22,16 @@ spec:
       imagePullPolicy: Never
       securityContext:
         privileged: true
+      env:
+        - name: POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+      volumeMounts:
+        - name: run-ateom
+          mountPath: /var/lib/ate
+  volumes:
+    - name: run-ateom
+      hostPath:
+        path: /var/lib/ate
+        type: DirectoryOrCreate

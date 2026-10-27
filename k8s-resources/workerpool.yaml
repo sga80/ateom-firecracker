@@ -1,0 +1,52 @@
+# WorkerPool for the "counter" demo on ateom-fc (firecracker) workers,
+# applied against the real Substrate control plane
+# (kubectl apply -f k8s-resources/workerpool.yaml). Modeled on substrate's
+# own demos/counter/counter-microvm.yaml.tmpl.
+#
+# Needs: SandboxClassFirecracker in both the SandboxConfig and WorkerPool
+# CRD enums (pkg/api/v1alpha1), the firecracker SandboxConfig
+# (k8s-resources/sandboxconfig.yaml, already applied), and the workerpool_apply.go
+# pod-shape/capability branches for firecracker. See
+# docs/dev/ateom-firecracker-milestones.md.
+#
+# No nodeSelector on ate.dev/substrate-version: substrate's own demos pin to
+# it so workers don't land on a node running a stale atelet during a rolling
+# upgrade, but this is a single-node kind cluster with no such upgrade in
+# flight, so it's unnecessary for this smoke test.
+#
+# replicas: 1 -- substrate's microvm demo uses 2 (one spare for the golden
+# snapshot reconciler to build against), but ateom-fc's suspend/resume
+# (checkpoint_workload/restore_workload) are still todo!() stubs, so there's
+# no golden snapshot machinery to exercise yet. One worker is enough to prove
+# RunWorkload reaches ateom-fc.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ate-demo-counter-firecracker
+
+---
+
+apiVersion: ate.dev/v1alpha1
+kind: WorkerPool
+metadata:
+  name: counter-firecracker
+  namespace: ate-demo-counter-firecracker
+  labels:
+    workload: counter-firecracker
+spec:
+  replicas: 1
+  sandboxClasses:
+  - name: firecracker
+    configRef:
+      name: firecracker
+  workerImage: localhost/ateom-fc:dev
+  template:
+    # Mirrors the microvm demo's worker-pod sizing (counter-microvm.yaml.tmpl):
+    # the sandbox's own vCPU/RAM is sized separately, by the ActorTemplate.
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 1Gi

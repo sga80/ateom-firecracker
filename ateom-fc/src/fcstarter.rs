@@ -19,13 +19,12 @@ use std::os::unix::process::CommandExt;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
-use uuid::Uuid;
 
 pub(crate) const SOCKET_PATH: &str = "/tmp/firecracker.sock";
 const HEALTH_CHECK_RETRIES: u32 = 5;
 const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(1);
 #[cfg(target_os = "linux")]
-pub async fn start(client: Client, actor_uuid: Uuid) -> Result<()> {
+pub async fn start(client: Client, actor_uuid: &str) -> Result<()> {
     // Remove any stale socket from a previous run, tolerating "didn't exist".
     if let Err(err) = std::fs::remove_file(SOCKET_PATH) {
         if err.kind() != std::io::ErrorKind::NotFound {

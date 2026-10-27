@@ -115,11 +115,11 @@ deterministically from the actor's own identity (e.g.
 elsewhere (`nodepath.AteomSocketPath(podUID)`). No CID-allocator or
 collision-avoidance table needed.
 
-Caveat worth being honest about: this is specific to Firecracker's default
-UDS-backed vsock. There's a separate `vhost-vsock` passthrough mode (using
-the host kernel's native vsock device directly, for performance) where CIDs
-*would* need to be genuinely host-wide unique, since that mode shares a real
-kernel resource across processes. Not relevant to M1's single-actor scope,
+Caveat: this is specific to Firecracker's default UDS-backed vsock. There's
+a separate `vhost-vsock` passthrough mode (using the host kernel's native
+vsock device directly, for performance) where CIDs *would* need to be
+host-wide unique, since that mode shares a kernel resource across
+processes. Not relevant to M1's single-actor scope,
 and worth verifying empirically before relying on it if multi-actor support
 is ever built for real.
 

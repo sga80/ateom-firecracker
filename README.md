@@ -50,9 +50,14 @@ actor's own process.
 - Forwards the actor's stdout/stderr back to the pod's own stdout, labeled.
 
 **Control-plane integration**
-- Reports this worker's capacity (sandbox class, slot count) on startup (M5, not yet built).
-- Serves `RunWorkload` / `CheckpointWorkload` / `RestoreWorkload` over gRPC (M5, not yet built).
-- M4 (tap networking) shipped; M5 (`ateompb.AteomServer` integration) is next — see "Status" below.
+- Reports this worker's capacity (sandbox class, slot count) on startup (M5, done).
+- Serves `RunWorkload` over gRPC end to end — OCI image composition, boot,
+  exec inside the guest (M5, done). `CheckpointWorkload` /
+  `RestoreWorkload` / `GetWorkloadStats` / `TerminateWorkload` are still
+  `todo!()` stubs (M6, not yet built).
+- M5 (`ateompb.AteomServer` integration, real end-to-end `RunWorkload`)
+  shipped; M6 (checkpoint/restore/stats/terminate) and M7 (egress/ingress)
+  are next — see "Status" below.
 
 ### What's actually running, host to guest
 
@@ -87,15 +92,123 @@ REST/socket call.
 
 ## Status
 
+The diagram below is the full intended request path. Solid green boxes are
+confirmed working (see "Proof" below); dashed red boxes are the remaining
+`todo!()` stubs and the missing networking bridge, picked up in M6 and M7.
+Kept in sync with the same diagram in
+[`docs/dev/ateom-firecracker-milestones.md`](docs/dev/ateom-firecracker-milestones.md#end-to-end-flow-m5-done-full-path-incl-m6m7),
+which also has the per-gap explanations.
+
+```mermaid
+flowchart TD
+    U["kubectl ate create actor"] --> API["ate-api-server"]
+    API --> CTRL["ate-controller<br/>schedules onto an ateom-fc worker pod"]
+    CTRL --> ATELET["atelet<br/>RegisterWorker, pulls OCI image,<br/>writes rootfs-overlay.json"]
+    ATELET -->|"RunWorkload gRPC (mTLS + SPIFFE)"| RW
+
+    subgraph RUNWORKLOAD["ateom-fc: run_workload — M5, done"]
+        direction TB
+        RW["setup_bundle_rootfs<br/>compose cached layers via overlay mount"]
+        RW --> LOW["docker_lower_ext4_block_device<br/>tar composed rootfs → ext4, keyed by image digest"]
+        LOW --> UP["docker_upper_ext4_block_device<br/>empty writable ext4"]
+        UP --> TAP["setup_actor_tap<br/>isolated netns + tap0 = 169.254.17.1/30"]
+        TAP --> FCS["fcstarter::start<br/>spawn firecracker, setns into actor's netns"]
+        FCS --> BOOT["booter.boot<br/>kernel + 3 drives + vsock + NIC via Firecracker API"]
+        BOOT --> VSOCK["virtual_sock::start_connect<br/>ping, then exec over vsock ttrpc"]
+    end
+
+    VSOCK -->|vsock| GI
+
+    subgraph VM["Firecracker microVM — M5, done"]
+        direction TB
+        GI["guest-init (PID 1)"] --> MNT["mount /dev/vdb + /dev/vdc as overlay<br/>→ /mnt/upper-device/merged"]
+        MNT --> NET["configure eth0 = 169.254.17.2<br/>gateway = 169.254.17.1"]
+        NET --> EXEC["exec /ko-app/counter"]
+        EXEC --> APPSRV["counter.go serving :80"]
+    end
+
+    VERIFY["today's only access:<br/>node nsenter + curl http://169.254.17.2/"] -.->|"real HTTP 200"| APPSRV
+
+    ATELET -.->|"CheckpointWorkload /<br/>RestoreWorkload gRPC"| CKPT["ateom-fc: checkpoint_workload /<br/>restore_workload — M6, todo!()"]
+    CKPT -.-> FCAPI["Firecracker REST API<br/>PATCH /vm (pause) → PUT /snapshot/create<br/>→ kill → relaunch from snapshot"]
+    ATELET -.->|"GetWorkloadStats / TerminateWorkload"| STATS["ateom-fc: get_active_workload_stats /<br/>terminate_workload — M6, todo!() (panics today)"]
+
+    ROUTER["atenet-router (ingress) /<br/>atenet-egress (egress)"] -.->|"no bridge/NAT yet — M7"| TAP
+
+    classDef done fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef todo fill:#fee2e2,stroke:#dc2626,stroke-dasharray: 5 5,color:#7f1d1d;
+    class RW,LOW,UP,TAP,FCS,BOOT,VSOCK,GI,MNT,NET,EXEC,APPSRV done;
+    class CKPT,FCAPI,STATS,ROUTER,VERIFY todo;
+```
+
 | Milestone | What it proved | Status |
 |---|---|---|
 | M1 | Boot + vsock liveness ping | done |
 | M2 | Single rootfs, blocking exec | done (superseded by M3) |
 | M3 | OCI image → per-actor overlay rootfs, fire-and-forget exec | done |
 | M4 | Tap networking — host + guest addressing, Firecracker wiring, verified reachable from the Mac host | done |
+| M5 | Real `ateompb.AteomServer`: a `RunWorkload` gRPC call from unmodified Substrate boots a Firecracker microVM running the workload image, end to end | done |
+| M6 | Remaining `AteomServer` functionality — checkpoint/restore (Firecracker pause/snapshot/restore), workload stats, terminate, multi-container actors | not yet built |
+| M7 | Egress and ingress — bridge/NAT so `atenet-router`/`atenet-egress` reach a Firecracker-backed actor the normal way | not yet built |
 
 Full milestone plan: [`docs/dev/ateom-firecracker-milestones.md`](docs/dev/ateom-firecracker-milestones.md).
 Per-milestone notes and lessons learned: [`docs/dev/`](docs/dev/).
+
+### Proof: the real counter workload running end to end (M5)
+
+A `RunWorkload` gRPC call from unmodified Substrate, composing the OCI
+image, booting a Firecracker microVM, and executing the `counter.go`
+binary inside it — not a smoke test against the baked-in test image.
+
+`ateom-fc`'s own stdout, from a run on 2026-10-27, reading the logs:
+
+```
+firecracker stdout [PID 1] Launched echo with PID: 105
+command executed successfully
+firecracker stdout {"time":"2026-10-27T12:52:01.951666417Z","level":"INFO","msg":"Starting counter server on port 80"}
+firecracker stdout [   12.068158] random: crng init done
+firecracker stdout {"time":"2026-10-27T12:52:10.114159046Z","level":"INFO","msg":"Wrote content to random file","fshash":"eNIw19eTjhKuRgUS9YHI5nqh7gxJdsp6gJ67i5Zna5E"}
+firecracker stdout {"time":"2026-10-27T12:52:10.126680754Z","level":"INFO","msg":"Readyz now reports OK"}
+firecracker stdout {"time":"2026-10-27T12:52:10.146733504Z","level":"INFO","msg":"Count","count":0,"fshash":"eNIw19eTjhKuRgUS9YHI5nqh7gxJdsp6gJ67i5Zna5E"}
+```
+
+From an earlier run, an HTTP response was `curl`-ed from the node by
+entering the actor's own network namespace (see
+[`docs/dev/ateom-firecracker-milestones.md`](docs/dev/ateom-firecracker-milestones.md)
+for the exact command and the remaining ingress gap this works around):
+
+```
+hello from: 169.254.17.2 | preserved memory count: 1 | preserved file counter: -1 | preserved rootfs counter: 1
+```
+
+## Code Claude wrote directly
+
+The default workflow on this project is: the author writes the application
+code, Claude reviews, researches Substrate's real contracts, and verifies
+builds. A few pieces were written directly by Claude instead, each under an
+explicit, scoped go-ahead — listed here since they haven't had the same
+review as the rest of the codebase.
+
+- **mTLS/`RegisterWorker` client** (`ateom-fc/src/atlet_client.rs`) — the
+  whole file. Judged out of depth for a first pass (hand-built `rustls`
+  `ServerCertVerifier`, SPIFFE identity checks, a bespoke Substrate X.509
+  extension, `tonic-tls`'s reconnect-safe connector). Flagged in the file
+  itself as not yet reviewed line by line.
+- **Real gRPC server against Substrate's actual wire contract**
+  (`ateom-fc/src/ateom.rs`, `ateom-fc/src/ateom_server.rs`) — vendored the
+  real `ateom.proto` and rewrote the server against it, replacing an
+  earlier invented service that silently never matched the real contract.
+- **OCI rootfs composition** (`ateom-fc/src/docker_ext4.rs`) — the
+  `OverlaySpec` contract types and the `setup_bundle_rootfs` overlay-mount
+  function, mirroring Substrate's real `internal/imagecache` design.
+  Marked in the file itself as not yet reviewed line by line.
+- **`run_workload`'s end-to-end wiring** (`ateom-fc/src/ateom_server.rs`) —
+  driving rootfs composition, tap/netns setup, Firecracker boot, and the
+  vsock exec from one request handler.
+
+Everything else — `fcstarter.rs`, `booter/`, `tap.rs`, `virtual_sock.rs`,
+all of `guest-init/` — was written by the project's author; Claude's role
+there was review, research, and build verification.
 
 ## Dev environment
 

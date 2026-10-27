@@ -9,7 +9,7 @@ existence.
 
 ## Why this is `guest-init`'s job, not the build pipeline's
 
-Everything else in the rootfs staging directory is genuinely static: the
+Everything else in the rootfs staging directory is static: the
 `guest-init` binary is a fixed set of bytes, known in advance, safe to bake
 into `rootfs.ext4` once, ahead of time. `/proc` and `/sys` are not static —
 they have no bytes to pre-compute at all. `/proc/meminfo`'s "content" isn't
@@ -211,7 +211,6 @@ than a hard technical requirement the way the `fstype` strings are.
   outright. Free to apply to `/sys`: it holds metadata, not programs.
 
 Applying all three to `/sys`, and just `nosuid` to `/dev` (which, unlike
-`/sys`, genuinely needs to stay writable and executable, since real device
-nodes get created there dynamically), matches exactly what a real
-Ubuntu/systemd boot does by default — a well-tested baseline worth matching
-rather than reinventing.
+`/sys`, needs to stay writable and executable, since device nodes get
+created there dynamically), matches what a real Ubuntu/systemd boot does by
+default — a well-tested baseline worth matching rather than reinventing.

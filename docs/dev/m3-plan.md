@@ -52,8 +52,8 @@ stages** — this split matters, see below:
    real `cmd/ateom-microvm` source: it's a long-running daemon handling up
    to `--max-actors` (default 1000) over its lifetime, keyed by
    `actorUid`, exactly like `ateom-gvisor`. That makes a shared,
-   image-keyed lower genuinely pay off, so the split was implemented now
-   rather than deferred to M7/M8. See "What actually shipped" below for
+   image-keyed lower pay off, so the split was implemented now rather than
+   deferred to M7/M8. See "What actually shipped" below for
    the real drive layout and mount sequence.
 4. ~~**Extract the real entrypoint via `docker inspect <image>`**~~
    **Deferred, not implemented.** `docker inspect` extraction was
@@ -88,7 +88,7 @@ pull "not reusable." Since `ateom-fc` is Rust and stays Rust, *any* Rust
 code written inside it — including stage 1's `docker create`/`export`/
 `inspect` calls, if implemented there — is real, kept code, not throwaway,
 regardless of whether Substrate integration later changes *what* triggers
-it. The only genuinely disposable artifact is `deploy/Dockerfile.ateom-fc`'s
+it. The only disposable artifact is `deploy/Dockerfile.ateom-fc`'s
 rootfs-baking step (the `busybox-static`/`mkfs.ext4` block baked in at
 *build* time) — once `ateom-fc` builds its own rootfs at *runtime*, that
 step has nothing left to do.
@@ -333,8 +333,7 @@ overlay-merged rootfs, confirmed via live serial-console output:
 
 The "Wrote content to random file" + matching `fshash` on every `Count`
 line confirms real write I/O against the per-actor upper layer, not just
-a process that happened to start — the overlay's copy-up/write path
-genuinely works end to end.
+a process that happened to start.
 
 Measured timings (instrumented with `std::time::Instant` on both sides):
 - Firecracker process start (spawn + health-check poll): ~1.0s, one-time

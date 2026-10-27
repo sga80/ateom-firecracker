@@ -8,7 +8,6 @@ mod network_interfaces;
 use anyhow::{bail, Result};
 use reqwest::{Client, Response, StatusCode};
 use serde::Serialize;
-use uuid::Uuid;
 
 pub(crate) struct Booter {
     client: Client,
@@ -17,11 +16,11 @@ pub(crate) struct Booter {
     uds_path: String, // this is set when we set vsock
     docker_image_ext4_path: String,
     docker_image_upper_ext4_path: String,
-    actor_uuid: Uuid,
+    actor_uuid: String,
 }
 
 impl Booter {
-    pub fn new(client: Client, kernel_path: String, root_fs_path: String, docker_image_ext4_path: String, docker_image_upper_ext4_path: String, actor_uuid: Uuid) -> Self {
+    pub fn new(client: Client, kernel_path: String, root_fs_path: String, docker_image_ext4_path: String, docker_image_upper_ext4_path: String, actor_uuid: String) -> Self {
         Booter {
             client,
             kernel_path,

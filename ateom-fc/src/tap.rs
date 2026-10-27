@@ -6,7 +6,6 @@ use rtnetlink::{Handle, LinkUnspec, NetworkNamespace};
 use std::fs::{File, OpenOptions};
 use std::net::IpAddr;
 use std::os::fd::AsRawFd;
-use uuid::Uuid;
 
 #[cfg(target_os = "linux")]
 nix::ioctl_write_ptr_bad!(tunsetiff, 0x400454ca, libc::ifreq);
@@ -14,9 +13,9 @@ nix::ioctl_write_ptr_bad!(tunsetiff, 0x400454ca, libc::ifreq);
 nix::ioctl_write_int_bad!(tunsetpersist, 0x400454cb);
 
 #[cfg(target_os = "linux")]
-pub async fn setup_actor_tap(actor_uuid: Uuid, ip_address: String) -> anyhow::Result<()> {
+pub async fn setup_actor_tap(actor_uuid: &str, ip_address: String) -> anyhow::Result<()> {
     let tap_name = "tap0";
-    let actor_uuid_clone = actor_uuid.clone();
+    let actor_uuid_clone = actor_uuid.to_string().clone();
     // if !std::path::Path::new("/var/run/netns").exists() {
     //     fs::create_dir_all("/var/run/netns")?;
     // }

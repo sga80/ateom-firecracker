@@ -49,7 +49,10 @@ LIMA_ARCHIVE_PATH := /tmp/$(IMAGE_FILE_SAFE_NAME)-$(IMAGE_TAG).tar
 POD_SPEC := k8s-resources/pod.yaml
 LIMA_POD_SPEC_PATH := /tmp/ateom-fc-pod.yaml
 
-.PHONY: all image fetch-assets clean rebuild tag save-to-lima run-pod
+SANDBOXCONFIG_SPEC := k8s-resources/sandboxconfig.yaml
+LIMA_SANDBOXCONFIG_PATH := /tmp/ateom-fc-sandboxconfig.yaml
+
+.PHONY: all image fetch-assets clean rebuild tag save-to-lima run-pod apply-sandboxconfig
 
 all: image
 
@@ -130,3 +133,12 @@ run-pod:
 	limactl copy $(POD_SPEC) $(LIMA_INSTANCE):$(LIMA_POD_SPEC_PATH)
 	limactl shell $(LIMA_INSTANCE) -- kubectl delete -f $(LIMA_POD_SPEC_PATH) --ignore-not-found
 	limactl shell $(LIMA_INSTANCE) -- kubectl apply -f $(LIMA_POD_SPEC_PATH)
+
+# Copies k8s-resources/sandboxconfig.yaml into fcvm and applies it. Unlike
+# run-pod, no delete-first: SandboxConfig is a regular CR, so `kubectl apply`
+# updates it in place fine. Needs SandboxClassFirecracker in the cluster's
+# SandboxConfig CRD already (see docs/dev/ateom-firecracker-milestones.md) —
+# otherwise this fails admission with an unrecognized sandboxClass enum value.
+apply-sandboxconfig:
+	limactl copy $(SANDBOXCONFIG_SPEC) $(LIMA_INSTANCE):$(LIMA_SANDBOXCONFIG_PATH)
+	limactl shell $(LIMA_INSTANCE) -- kubectl apply -f $(LIMA_SANDBOXCONFIG_PATH)

@@ -66,7 +66,7 @@ async fn run_conversation(agent: &GuestAgentClient) -> Result<()> {
 
     // now send the command to execute
     let mut exec_request = ExecRequest::new();
-    exec_request.command = String::from("/counter"); // hard coded to the counter example for now.
+    exec_request.command = String::from("/ko-app/counter"); // hard coded to the counter example for now.
     let exec_response = agent.exec(Context::default(), &exec_request).await?;
     if exec_response.success {
         println!("command executed successfully")

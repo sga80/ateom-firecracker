@@ -1,0 +1,79 @@
+# Builds ateom-fc's image and loads it into the ateom-fc kind cluster, all
+# from *inside* fcvm — now that this repo is mounted writable there (see
+# ~/.lima/fcvm/lima.yaml), the whole build+load can run against fcvm's own
+# Docker daemon directly, with no save/copy/load relay from the Mac host.
+#
+# This is a separate entry point from the root Makefile, not a replacement:
+# the root Makefile targets this Mac's Docker Desktop and needs the
+# docker save -> limactl copy -> docker load -> kind load relay in
+# save-to-lima because Docker Desktop and fcvm's Docker are two separate
+# daemons. Building inside fcvm skips that relay entirely, since `docker
+# build` and `kind load` both talk to the one daemon already backing the
+# kind cluster's containerd.
+#
+# Usage: make -f Makefile.lima <target>  (run from the Mac host; every
+# target below shells into fcvm itself).
+
+TARGET ?= aarch64-unknown-linux-musl
+
+ASSETS_DIR := assets
+FC_VERSION ?= v1.13.1
+FC_VERSION_MINOR := $(basename $(FC_VERSION))
+FC_ARCH := $(firstword $(subst -, ,$(TARGET)))
+
+IMAGE_NAME ?= localhost/ateom-fc
+IMAGE_TAG ?= dev
+
+LIMA_INSTANCE ?= fcvm
+KIND_CLUSTER ?= ateom-fc
+
+# This Mac's mount path for the project; identical inside fcvm, since it's
+# the same virtiofs mount at the same location (see lima.yaml).
+PROJECT_DIR := /Users/shyamgavulla/code/rust/projects/ateom-firecracker
+
+.PHONY: fetch-assets image load-kind deploy clean
+
+# Default target: build + load in one step.
+deploy: load-kind
+
+# Same asset-fetch logic as the root Makefile's fetch-assets, just run
+# inside fcvm so a from-scratch Lima-only workflow needs nothing fetched on
+# the host first. Idempotent, same as the original.
+fetch-assets:
+	limactl shell $(LIMA_INSTANCE) -- bash -lc '\
+		set -e; \
+		cd $(PROJECT_DIR); \
+		if [ -f $(ASSETS_DIR)/firecracker ]; then \
+			echo "$(ASSETS_DIR)/firecracker already present, skipping fetch"; \
+		else \
+			mkdir -p $(ASSETS_DIR); \
+			tmp=$$(mktemp -d); \
+			curl -fL "https://github.com/firecracker-microvm/firecracker/releases/download/$(FC_VERSION)/firecracker-$(FC_VERSION)-$(FC_ARCH).tgz" -o "$$tmp/firecracker.tgz"; \
+			tar -xzf "$$tmp/firecracker.tgz" -C "$$tmp"; \
+			install -m 0755 "$$tmp/release-$(FC_VERSION)-$(FC_ARCH)/firecracker-$(FC_VERSION)-$(FC_ARCH)" $(ASSETS_DIR)/firecracker; \
+			rm -rf "$$tmp"; \
+		fi; \
+		if [ -f $(ASSETS_DIR)/vmlinux ]; then \
+			echo "$(ASSETS_DIR)/vmlinux already present, skipping fetch"; \
+		else \
+			mkdir -p $(ASSETS_DIR); \
+			kkey=$$(curl -fsSL "https://s3.amazonaws.com/spec.ccfc.min?prefix=firecracker-ci/$(FC_VERSION_MINOR)/$(FC_ARCH)/vmlinux-5.10&list-type=2" \
+				| grep -oE "firecracker-ci/$(FC_VERSION_MINOR)/$(FC_ARCH)/vmlinux-5\.10\.[0-9]+" | sort -V | tail -1); \
+			if [ -z "$$kkey" ]; then echo "could not find a vmlinux build for $(FC_VERSION_MINOR)/$(FC_ARCH) in the firecracker-ci bucket" >&2; exit 1; fi; \
+			curl -fL "https://s3.amazonaws.com/spec.ccfc.min/$$kkey" -o "$(ASSETS_DIR)/vmlinux"; \
+		fi'
+
+# Builds directly against fcvm's own Docker daemon -- the same one backing
+# the ateom-fc kind cluster's containerd, so no image transfer is needed
+# before load-kind.
+image:
+	limactl shell $(LIMA_INSTANCE) -- bash -lc "cd $(PROJECT_DIR) && docker build -f deploy/Dockerfile.ateom-fc -t $(IMAGE_NAME):$(IMAGE_TAG) ."
+
+# `kind load docker-image` pulls straight from fcvm's local Docker image
+# store into the cluster's containerd -- one step, no archive/copy/load.
+load-kind: image
+	limactl shell $(LIMA_INSTANCE) -- kind load docker-image $(IMAGE_NAME):$(IMAGE_TAG) --name $(KIND_CLUSTER)
+	@echo "loaded into $(LIMA_INSTANCE)'s '$(KIND_CLUSTER)' kind cluster — ready for kubectl apply"
+
+clean:
+	limactl shell $(LIMA_INSTANCE) -- bash -lc "docker rmi $(IMAGE_NAME):$(IMAGE_TAG)" || true

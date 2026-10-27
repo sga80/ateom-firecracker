@@ -19,3 +19,19 @@ rtnetlink = "0.23.0"
 nix = { version = "0.31.3", features = ["sched", "ioctl"] }
 libc = "0.2"
 futures-util = "0.3.34"
+prost = "0.14.4"
+tonic = "0.14.6"
+tonic-prost = "0.14.6"
+tokio-stream = "0.1.18"
+axum = "0.8.9"
+serde_json = "1.0.149"
+rustls-pemfile = "2.2.0"
+rustls = { version = "0.23.46", features = ["ring"] }
+rustls-webpki = "0.103"
+tonic-tls = { version = "0.7.1", features = ["rustls"] }
+x509-parser = "0.16"
+rustix = { version = "1.1.5", features = ["mount"] }
+
+[build-dependencies]
+protox = "0.10.0"
+tonic-prost-build = "0.14.6"

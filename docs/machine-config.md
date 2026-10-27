@@ -55,15 +55,15 @@ checking current docs if this becomes load-bearing).
 
 ### How this differs from Kubernetes CPU requests/limits
 
-A genuinely different kind of constraint, not just a stricter version of the
-same thing:
+A different kind of constraint, not just a stricter version of the same
+thing:
 
 - **Kubernetes CPU requests/limits** are an **accounting** constraint,
   implemented via cgroups (CFS shares for requests, CFS quota/period for
   limits). They don't restrict *which* cores a container's threads can run
   on, or how many it can spread across — only how much aggregate CPU *time*
-  it accumulates. A container with a generous limit can genuinely have
-  threads scheduled across every core on the box simultaneously.
+  it accumulates. A container with a generous limit can have threads
+  scheduled across every core on the box simultaneously.
 - **`vcpu_count`** is a **topology** constraint — the guest kernel never sees
   more cores than this to begin with. There's no "more capacity available
   under low contention" the way a cgroup quota could theoretically allow;
@@ -110,8 +110,8 @@ only allocated the first time something actually touches it.
 So `mem_size_mib` is a **ceiling**, not a reservation: if `ateom-init` only
 ever touches ~20MiB worth of pages across its run, the host only ever backs
 ~20MiB of real RAM for it, even though the configured value says 128. Real
-RAM usage grows lazily, tracking what's genuinely been touched, up to that
-fixed maximum.
+RAM usage grows lazily, tracking what's been touched, up to that fixed
+maximum.
 
 Connects to something in the real codebase: `cmd/ateom-microvm`'s
 `vmmMemReserveMiB` accounts for the VMM/virtiofsd's *own* process memory — a
