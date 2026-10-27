@@ -127,8 +127,6 @@ flowchart TD
         EXEC --> APPSRV["counter.go serving :80"]
     end
 
-    VERIFY["today's only access:<br/>node nsenter + curl http://169.254.17.2/"] -.->|"real HTTP 200"| APPSRV
-
     ATELET -.->|"CheckpointWorkload /<br/>RestoreWorkload gRPC"| CKPT["ateom-fc: checkpoint_workload /<br/>restore_workload — M6, todo!()"]
     CKPT -.-> FCAPI["Firecracker REST API<br/>PATCH /vm (pause) → PUT /snapshot/create<br/>→ kill → relaunch from snapshot"]
     ATELET -.->|"GetWorkloadStats / TerminateWorkload"| STATS["ateom-fc: get_active_workload_stats /<br/>terminate_workload — M6, todo!() (panics today)"]
@@ -138,7 +136,7 @@ flowchart TD
     classDef done fill:#dcfce7,stroke:#16a34a,color:#14532d;
     classDef todo fill:#fee2e2,stroke:#dc2626,stroke-dasharray: 5 5,color:#7f1d1d;
     class RW,LOW,UP,TAP,FCS,BOOT,VSOCK,GI,MNT,NET,EXEC,APPSRV done;
-    class CKPT,FCAPI,STATS,ROUTER,VERIFY todo;
+    class CKPT,FCAPI,STATS,ROUTER todo;
 ```
 
 | Milestone | What it proved | Status |

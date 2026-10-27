@@ -69,8 +69,6 @@ flowchart TD
         EXEC --> APPSRV["counter.go serving :80"]
     end
 
-    VERIFY["today's only access:<br/>node nsenter + curl http://169.254.17.2/"] -.->|"real HTTP 200"| APPSRV
-
     ATELET -.->|"CheckpointWorkload /<br/>RestoreWorkload gRPC"| CKPT["ateom-fc: checkpoint_workload /<br/>restore_workload — M6, todo!()"]
     CKPT -.-> FCAPI["Firecracker REST API<br/>PATCH /vm (pause) → PUT /snapshot/create<br/>→ kill → relaunch from snapshot"]
     ATELET -.->|"GetWorkloadStats / TerminateWorkload"| STATS["ateom-fc: get_active_workload_stats /<br/>terminate_workload — M6, todo!() (panics today)"]
@@ -80,7 +78,7 @@ flowchart TD
     classDef done fill:#dcfce7,stroke:#16a34a,color:#14532d;
     classDef todo fill:#fee2e2,stroke:#dc2626,stroke-dasharray: 5 5,color:#7f1d1d;
     class RW,LOW,UP,TAP,FCS,BOOT,VSOCK,GI,MNT,NET,EXEC,APPSRV done;
-    class CKPT,FCAPI,STATS,ROUTER,VERIFY todo;
+    class CKPT,FCAPI,STATS,ROUTER todo;
 ```
 
 **M6 gaps shown above:** `CheckpointWorkload`/`RestoreWorkload` are
@@ -90,11 +88,10 @@ restore REST API. `GetWorkloadStats`/`GetActiveWorkloadStats` are also
 background stats poller calls it (~every 50s). `TerminateWorkload` being
 `todo!()` is likely why an actor can't leave `RUNNING` cleanly today.
 
-**M7 gap shown above:** the `VERIFY` step only works because you can
-`nsenter` into the node and reach `169.254.17.2` directly. There is no
-bridge/NAT from `tap0` back to the pod's own primary network namespace, so
-the normal Substrate flow — port-forwarding `atenet-router` and `curl`-ing
-with an `ate-target-actor` header, the same way
+**M7 gap shown above:** there is no bridge/NAT from `tap0` back to the
+pod's own primary network namespace, so the normal Substrate flow —
+port-forwarding `atenet-router` and `curl`-ing with an `ate-target-actor`
+header, the same way
 [`demos/counter/README.md`](../../demos/counter/README.md) describes — does
 not yet reach a Firecracker-backed actor.
 
